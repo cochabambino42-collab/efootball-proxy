@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { IRD_CONFIG } from '@/lib/ird-config';
+import { irdScraper } from '@/lib/ird-scraper';
 
 export async function POST(request) {
   try {
@@ -7,21 +8,28 @@ export async function POST(request) {
     
     if (!url || !url.includes(IRD_CONFIG.TARGET_DOMAIN)) {
       return NextResponse.json(
-        { error: `Solo se permiten URLs de ${IRD_CONFIG.TARGET_DOMAIN}` },
+        { 
+          success: false,
+          error: `Solo se permiten URLs de ${IRD_CONFIG.TARGET_DOMAIN}` 
+        },
         { status: 400 }
       );
     }
 
-    // Simulación de respuesta exitosa (luego la implementaremos completa)
+    const result = await irdScraper.scrape(url);
+
     return NextResponse.json({
-      success: true,
-      message: 'API I.R.D. operativa. Pronto tendrás scraping real.',
-      config: IRD_CONFIG
+      ...result,
+      cache: result.cached ? 'HIT' : 'MISS'
     });
 
   } catch (error) {
     return NextResponse.json(
-      { error: 'Error en el servidor I.R.D.' },
+      { 
+        success: false,
+        error: 'Error interno del servidor',
+        details: error.message 
+      },
       { status: 500 }
     );
   }
@@ -32,6 +40,9 @@ export async function GET() {
     name: 'I.R.D. Proxy API',
     status: 'operational',
     version: '1.0',
-    documentation: 'Usa POST con { "url": "https://efootballhub.net/..." }'
+    endpoints: {
+      'POST /': 'Scrape efootballhub.net URLs',
+      'GET /': 'Documentación'
+    }
   });
-}j
+    }
