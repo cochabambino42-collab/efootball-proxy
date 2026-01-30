@@ -5,12 +5,23 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "lint": "next lint"
   },
   "dependencies": {
-    "next": "15.1.6",
+    "next": "15.1.7",
     "react": "^19",
     "react-dom": "^19",
-    "cheerio": "1.0.0"
+    "cheerio": "1.0.0",
+    "lucide-react": "^0.344.0",
+    "tailwindcss": "^3.4.0",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.33"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "@types/react": "^18.2.61",
+    "@types/react-dom": "^18.2.19",
+    "typescript": "^5.3.3"
   }
 }
