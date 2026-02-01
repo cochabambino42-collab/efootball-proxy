@@ -1,18 +1,32 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Habilita App Router
+  // Configuración para App Router
   experimental: {
-    appDir: true,
+    serverComponentsExternalPackages: ['cheerio'],
   },
-  // Para cheerio
-  serverExternalPackages: ['cheerio'],
-  // Asegurar que las API routes funcionen
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.externals.push('cheerio');
-    }
-    return config;
-  }
+  // Asegurar que las rutas API funcionen
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: '/api/:path*',
+      },
+    ];
+  },
+  // Headers para CORS
+  async headers() {
+    return [
+      {
+        source: '/api/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Credentials', value: 'true' },
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET,POST,PUT,DELETE,OPTIONS' },
+          { key: 'Access-Control-Allow-Headers', value: 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version' },
+        ],
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;
