@@ -45,6 +45,17 @@ export async function GET() {
       'GET /': 'Documentación'
     }
   });
+}
+export async function GET() {
+  return NextResponse.json({
+    name: 'I.R.D. Proxy API',
+    status: 'operational',
+    version: '1.0',
+    endpoints: {
+      'POST /': 'Scrape efootballhub.net URLs',
+      'GET /': 'Documentación'
+    }
+  });
         }
   } catch (error) {
     return NextResponse.json(
