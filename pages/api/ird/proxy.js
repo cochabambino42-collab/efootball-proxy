@@ -1,3 +1,5 @@
+// pages/api/ird/proxy.js - VERSIÓN 3.2 (COMMONJS FIX)
+
 // Rotación de User-Agents para evitar bloqueos
 const userAgents = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -23,10 +25,15 @@ if (typeof setInterval !== 'undefined') {
   }, 60 * 60 * 1000);
 }
 
-// IMPORTANTE: Agregar Cheerio
-import * as cheerio from 'cheerio';
+// CRÍTICO: Para Pages Router, usar require() no import
+let cheerio;
+try {
+  cheerio = require('cheerio');
+} catch (error) {
+  console.error('No se pudo cargar cheerio:', error);
+}
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // Configurar CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -40,15 +47,15 @@ export default async function handler(req, res) {
   // Documentación para GET
   if (req.method === 'GET') {
     return res.status(200).json({
-      name: 'I.R.D. Proxy API v3.1',
+      name: 'I.R.D. Proxy API v3.2 (CommonJS Fix)',
       description: 'API optimizada para IA - Extrae datos estructurados de efootballhub.net',
-      version: '3.1',
+      version: '3.2',
       endpoints: {
         'POST /': 'Scraping con datos estructurados',
         'GET /': 'Esta documentación'
       },
       features: [
-        'Extracción de tablas y listas con Cheerio',
+        'Extracción con Cheerio (CommonJS)',
         'Datos estructurados para IA',
         'Cache inteligente (30min)',
         '5 User-Agents rotativos',
@@ -123,10 +130,15 @@ export default async function handler(req, res) {
 
     const html = await response.text();
     
-    // USAR CHEERIO EN VEZ DE REGEX
+    // VERIFICACIÓN CRÍTICA: Cheerio cargado
+    if (!cheerio) {
+      throw new Error('Cheerio no está disponible. Verifica la instalación.');
+    }
+
+    // USAR CHEERIO (COMMONJS)
     const $ = cheerio.load(html);
     
-    // 1. Extraer título y metadatos básicos CON CHEERIO (robusto)
+    // 1. Extraer título y metadatos básicos
     const title = $('title').text().trim() || 
                   $('meta[property="og:title"]').attr('content') || 
                   $('h1').first().text().trim() || 
@@ -134,19 +146,18 @@ export default async function handler(req, res) {
     
     const description = $('meta[name="description"]').attr('content') || 
                        $('meta[property="og:description"]').attr('content') || 
-                       $('meta[name="og:description"]').attr('content') || 
                        '';
     
     const keywords = $('meta[name="keywords"]').attr('content') || '';
 
-    // 2. Contar elementos CON CHEERIO
+    // 2. Contar elementos
     const links = $('a').length;
     const images = $('img').length;
     const tables = $('table').length;
     const lists = $('ul, ol').length;
     const forms = $('form').length;
 
-    // 3. Extraer enlaces importantes CON CHEERIO
+    // 3. Extraer enlaces importantes
     const importantLinks = [];
     $('a').each((i, el) => {
       if (importantLinks.length >= 20) return false;
@@ -157,7 +168,7 @@ export default async function handler(req, res) {
       if (text && href && (href.startsWith('http') || href.startsWith('/'))) {
         const fullHref = href.startsWith('http') ? href : new URL(href, url).href;
         
-        // Filtrar enlaces importantes
+        // Filtrar enlaces importantes para efootball
         const footballKeywords = ['player', 'team', 'tactic', 'formation', 'skill', 'rating', 'efootball', 'hub'];
         const hasKeyword = footballKeywords.some(keyword => 
           text.toLowerCase().includes(keyword) || fullHref.toLowerCase().includes(keyword)
@@ -173,7 +184,7 @@ export default async function handler(req, res) {
       }
     });
 
-    // 4. Extraer tablas CON CHEERIO
+    // 4. Extraer tablas
     const tableData = [];
     $('table').each((tableIndex, table) => {
       if (tableIndex >= 3) return false;
@@ -239,10 +250,10 @@ export default async function handler(req, res) {
       performance: {
         user_agent_used: userAgent.substring(0, 60) + '...',
         cache_status: 'MISS',
-        extraction_method: 'cheerio'  // ¡Cambiado de 'advanced_regex'!
+        extraction_method: 'cheerio_commonjs'
       },
       timestamp: new Date().toISOString(),
-      version: '3.1'
+      version: '3.2'
     };
 
     // Guardar en caché
@@ -285,4 +296,4 @@ function detectPageType(url, title, links) {
   if (links.some(link => link.text.toLowerCase().includes('database'))) return 'database_page';
   
   return 'general_page';
-      }
+        } 
