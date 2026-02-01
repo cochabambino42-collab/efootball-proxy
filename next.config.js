@@ -1,32 +1,42 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Configuración para App Router
-  experimental: {
-    serverComponentsExternalPackages: ['cheerio'],
-  },
-  // Asegurar que las rutas API funcionen
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: '/api/:path*',
-      },
-    ];
-  },
-  // Headers para CORS
+  // Configuración para producción
+  reactStrictMode: true,
+  swcMinify: true,
+  
+  // Headers de seguridad
   async headers() {
     return [
       {
-        source: '/api/:path*',
+        source: '/:path*',
         headers: [
-          { key: 'Access-Control-Allow-Credentials', value: 'true' },
-          { key: 'Access-Control-Allow-Origin', value: '*' },
-          { key: 'Access-Control-Allow-Methods', value: 'GET,POST,PUT,DELETE,OPTIONS' },
-          { key: 'Access-Control-Allow-Headers', value: 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version' },
-        ],
-      },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff'
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY'
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block'
+          }
+        ]
+      }
     ];
   },
+  
+  // Redirecciones
+  async redirects() {
+    return [
+      {
+        source: '/',
+        destination: '/ird-dashboard',
+        permanent: true
+      }
+    ];
+  }
 };
 
 module.exports = nextConfig;
