@@ -23,6 +23,9 @@ if (typeof setInterval !== 'undefined') {
   }, 60 * 60 * 1000);
 }
 
+// IMPORTANTE: Agregar Cheerio
+import * as cheerio from 'cheerio';
+
 export default async function handler(req, res) {
   // Configurar CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -37,15 +40,15 @@ export default async function handler(req, res) {
   // Documentación para GET
   if (req.method === 'GET') {
     return res.status(200).json({
-      name: 'I.R.D. Proxy API v3.0',
+      name: 'I.R.D. Proxy API v3.1',
       description: 'API optimizada para IA - Extrae datos estructurados de efootballhub.net',
-      version: '3.0',
+      version: '3.1',
       endpoints: {
         'POST /': 'Scraping con datos estructurados',
         'GET /': 'Esta documentación'
       },
       features: [
-        'Extracción de tablas y listas',
+        'Extracción de tablas y listas con Cheerio',
         'Datos estructurados para IA',
         'Cache inteligente (30min)',
         '5 User-Agents rotativos',
@@ -115,99 +118,91 @@ export default async function handler(req, res) {
     clearTimeout(timeout);
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
     const html = await response.text();
     
-    // ANÁLISIS AVANZADO PARA IA
-    // 1. Extraer título y metadatos básicos
-    const titleMatch = html.match(/<title>(.*?)<\/title>/i);
-    const title = titleMatch ? titleMatch[1].trim() : 'Sin título';
+    // USAR CHEERIO EN VEZ DE REGEX
+    const $ = cheerio.load(html);
     
-    const descriptionMatch = html.match(/<meta name="description" content="(.*?)"/i);
-    const description = descriptionMatch ? descriptionMatch[1] : '';
+    // 1. Extraer título y metadatos básicos CON CHEERIO (robusto)
+    const title = $('title').text().trim() || 
+                  $('meta[property="og:title"]').attr('content') || 
+                  $('h1').first().text().trim() || 
+                  'Sin título';
     
-    const keywordsMatch = html.match(/<meta name="keywords" content="(.*?)"/i);
-    const keywords = keywordsMatch ? keywordsMatch[1] : '';
+    const description = $('meta[name="description"]').attr('content') || 
+                       $('meta[property="og:description"]').attr('content') || 
+                       $('meta[name="og:description"]').attr('content') || 
+                       '';
+    
+    const keywords = $('meta[name="keywords"]').attr('content') || '';
 
-    // 2. Contar elementos
-    const links = (html.match(/<a\s+/gi) || []).length;
-    const images = (html.match(/<img\s+/gi) || []).length;
-    const tables = (html.match(/<table\s+/gi) || []).length;
-    const lists = (html.match(/<(ul|ol)\s+/gi) || []).length;
-    const forms = (html.match(/<form\s+/gi) || []).length;
+    // 2. Contar elementos CON CHEERIO
+    const links = $('a').length;
+    const images = $('img').length;
+    const tables = $('table').length;
+    const lists = $('ul, ol').length;
+    const forms = $('form').length;
 
-    // 3. Extraer datos estructurados (simplificado)
-    // - Enlaces importantes (los que contienen palabras clave)
-    const linkRegex = /<a\s+(?:[^>]*?\s+)?href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi;
+    // 3. Extraer enlaces importantes CON CHEERIO
     const importantLinks = [];
-    let match;
-    let linkCount = 0;
-    
-    while ((match = linkRegex.exec(html)) !== null && linkCount < 20) {
-      const href = match[1];
-      const text = match[2].replace(/<[^>]*>/g, '').trim();
+    $('a').each((i, el) => {
+      if (importantLinks.length >= 20) return false;
       
-      if (text && href && href.startsWith('http')) {
-        // Filtrar enlaces importantes para efootball
+      const href = $(el).attr('href');
+      const text = $(el).text().trim().replace(/\s+/g, ' ');
+      
+      if (text && href && (href.startsWith('http') || href.startsWith('/'))) {
+        const fullHref = href.startsWith('http') ? href : new URL(href, url).href;
+        
+        // Filtrar enlaces importantes
         const footballKeywords = ['player', 'team', 'tactic', 'formation', 'skill', 'rating', 'efootball', 'hub'];
         const hasKeyword = footballKeywords.some(keyword => 
-          text.toLowerCase().includes(keyword) || href.toLowerCase().includes(keyword)
+          text.toLowerCase().includes(keyword) || fullHref.toLowerCase().includes(keyword)
         );
         
         if (hasKeyword || text.length > 10) {
           importantLinks.push({
             text: text.substring(0, 100),
-            href: href,
+            href: fullHref,
             length: text.length
           });
-          linkCount++;
         }
       }
-    }
+    });
 
-    // 4. Extraer posibles datos tabulares (simplificado)
+    // 4. Extraer tablas CON CHEERIO
     const tableData = [];
-    const tableRegex = /<table[\s\S]*?<\/table>/gi;
-    let tableMatch;
-    let tableIndex = 0;
-    
-    while ((tableMatch = tableRegex.exec(html)) !== null && tableIndex < 3) {
-      const tableHtml = tableMatch[0];
-      // Extraer filas
-      const rowRegex = /<tr[\s\S]*?<\/tr>/gi;
-      const rows = [];
-      let rowMatch;
+    $('table').each((tableIndex, table) => {
+      if (tableIndex >= 3) return false;
       
-      while ((rowMatch = rowRegex.exec(tableHtml)) !== null && rows.length < 10) {
-        const rowHtml = rowMatch[0];
-        // Extraer celdas
-        const cellRegex = /<(td|th)[\s\S]*?>([\s\S]*?)<\/\1>/gi;
-        const cells = [];
-        let cellMatch;
+      const rows = [];
+      $(table).find('tr').each((i, row) => {
+        if (rows.length >= 10) return false;
         
-        while ((cellMatch = cellRegex.exec(rowHtml)) !== null) {
-          const cellContent = cellMatch[2].replace(/<[^>]*>/g, '').trim();
+        const cells = [];
+        $(row).find('td, th').each((j, cell) => {
+          const cellContent = $(cell).text().trim().replace(/\s+/g, ' ');
           if (cellContent) {
             cells.push(cellContent.substring(0, 200));
           }
-        }
+        });
         
         if (cells.length > 0) {
           rows.push(cells);
         }
-      }
+      });
       
       if (rows.length > 0) {
         tableData.push({
           tableIndex: tableIndex,
           rowCount: rows.length,
-          sampleRows: rows.slice(0, 3) // Primeras 3 filas como muestra
+          sampleRows: rows.slice(0, 3)
         });
-        tableIndex++;
       }
-    }
+    });
 
     // 5. Construir respuesta optimizada para IA
     const result = {
@@ -218,7 +213,7 @@ export default async function handler(req, res) {
           title,
           description,
           keywords,
-          charset: html.match(/charset=["']?([\w-]+)/i)?.[1] || 'unknown'
+          charset: $('meta[charset]').attr('charset') || 'UTF-8'
         },
         statistics: {
           links,
@@ -232,23 +227,22 @@ export default async function handler(req, res) {
         structured_data: {
           important_links: importantLinks.slice(0, 10),
           tables: tableData,
-          // Detectar si es página de jugadores, equipos, etc.
           page_type: detectPageType(url, title, importantLinks),
           has_player_data: title.toLowerCase().includes('player') || url.includes('/player'),
           has_team_data: title.toLowerCase().includes('team') || url.includes('/team')
         },
         raw_preview: {
-          html_first_500: html.substring(0, 500).replace(/</g, '&lt;').replace(/>/g, '&gt;'),
+          html_first_500: html.substring(0, 500),
           text_first_500: html.replace(/<[^>]*>/g, '').substring(0, 500)
         }
       },
       performance: {
         user_agent_used: userAgent.substring(0, 60) + '...',
         cache_status: 'MISS',
-        extraction_method: 'advanced_regex'
+        extraction_method: 'cheerio'  // ¡Cambiado de 'advanced_regex'!
       },
       timestamp: new Date().toISOString(),
-      version: '3.0'
+      version: '3.1'
     };
 
     // Guardar en caché
@@ -291,4 +285,4 @@ function detectPageType(url, title, links) {
   if (links.some(link => link.text.toLowerCase().includes('database'))) return 'database_page';
   
   return 'general_page';
-}
+      }
